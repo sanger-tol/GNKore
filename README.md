@@ -1,8 +1,8 @@
 # GenomeNoteKore
 ---
-Originally written by Karen Houliston (GRIT) and ChatGPT.
+Originally written by Karen Houliston (GRIT).
 
-Project has been written by Damon-Lee Pointon to improve functionality, performance and robustness.
+Project has been written by Damon-Lee Pointon to improve functionality, performance, organisation and robustness.
 
 ---
 
@@ -16,5 +16,14 @@ Spaceship <- Junk data
 PRJDB101 <- A random project ID for the `Mouse oocyte methylome` project
 Stargate <- Junk data at a second index
 PRJEB51917 <-- ToL sample `Tiphia Femorata`, which should be a perfect example
-PRJEB27699 <-- ToL sample `Aquila chrysaetos chrysaetos` with a three part name which is shrunk by NCBI
+PRJEB27699 <-- ToL sample `Aquila chrysaetos chrysaetos` with a three part name which is shrunk by
+```
+
+---
+
+You can run the script with:
+```
+genomenotekore.py \
+    src/data/minimal_list.txt \
+    -t src/data/Psyche_accepted_GN_structure_Feb\ 2025.docx
 ```
