@@ -67,16 +67,15 @@ def parse_args(argv = None):
 
 
 def main(args):
+    # Load dotenv into environmental values
+    # os.getenv() is used later on to get the value
     load_dotenv(args.environmental_values)
 
     bioproject_list = file_to_list(args.bioproject_file)
-    for i in bioproject_list:
-        logging.info(f"Processing Bioproject: {i}")
-        bioproject_data = Bioproject(i)
+    for bioproject_line in bioproject_list:
+        logging.info(f"Processing Bioproject: {bioproject_line}")
+        bioproject_data = Bioproject(bioproject_line[0].strip(), bioproject_line[1].strip())
         print(bioproject_data)
 
-
 if __name__ == "__main__":
-    main(
-        parse_args()
-    )
+    main( parse_args() )

@@ -9,12 +9,17 @@ def validate_bioproject(putative_bid):
     """
     Validate the bioproject ID with regex
     """
-    bid = re.search(r"^PRJ[DEN][A-Z]\d+$", putative_bid)
-    if bid is None:
-        print(f"BIOPROJECT_ID {putative_bid} DOESN'T MATCH THE REGEX: '^PRJ[DEN][A-Z]\\d+$'")
-        return "NA"
+    if ", " in putative_bid:
+        bioproject_id, note = putative_bid.split(", ")
     else:
-        return bid.string
+        bioproject_id = putative_bid
+        note = "NA"
+
+    bid = re.search(r"^PRJ[DEN][A-Z]\d+$", bioproject_id)
+    if bid is None:
+        sys.exit(f"BIOPROJECT_ID {bioproject_id} DOESN'T MATCH THE REGEX: '^PRJ[DEN][A-Z]\\d+$'")
+    else:
+        return bid.string, note
 
 def file_to_list(file_path):
     """

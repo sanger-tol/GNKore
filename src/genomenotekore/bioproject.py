@@ -8,17 +8,18 @@ import xml.etree.ElementTree as ET
 from .assembly import Assembly
 
 class Bioproject:
-    def __init__(self, bioproject_id):
-        self.bioproject = bioproject_id
-        self.raw_xml, self.study_title, self.taxid = self.parse_xml_data()
-        self.child_accessions = self.Bioproject_get_child_accessions(self.raw_xml)
-        self.taxonomy_ranks = self.NCBI_get_taxonomy_lineage_and_ranks()
-        gbif_data = self.GBIF_get_data()
-        self.taxonomic_authority = gbif_data["tax_auth"]
-        self.common_name = gbif_data["common_name"]
-        self.gbif_url = gbif_data["gbif_url"]
-        self.gbif_usage_key = gbif_data["gbif_usage_key"]
-        self.assembly_data = Assembly(self.taxid, self.child_accessions)
+    def __init__(self, bioproject_id, note):
+        self.bioproject                             = bioproject_id
+        self.note                                   = note
+        self.raw_xml, self.study_title, self.taxid  = self.parse_xml_data()
+        self.child_accessions                       = self.Bioproject_get_child_accessions(self.raw_xml)
+        self.taxonomy_ranks                         = self.NCBI_get_taxonomy_lineage_and_ranks()
+        gbif_data                                   = self.GBIF_get_data()
+        self.taxonomic_authority                    = gbif_data["tax_auth"]
+        self.common_name                            = gbif_data["common_name"]
+        self.gbif_url                               = gbif_data["gbif_url"]
+        self.gbif_usage_key                         = gbif_data["gbif_usage_key"]
+        self.assembly_data                          = Assembly(self.taxid, self.child_accessions)
 
         self.collection = self.__iter__()
 

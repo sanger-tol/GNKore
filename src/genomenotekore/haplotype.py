@@ -1,12 +1,13 @@
 import io
 
 class Haplotype:
-    def __init__(self, assembly_dict, assembly_type, taxid):
-        self.taxid = taxid
-        self.assembly_type = assembly_type
-        self.hap_name = assembly_dict["assembly_name"]
-        self.hap_accession = assembly_dict["accession"]
-        self.collection = self.__iter__()
+    def __init__(self, assembly_type):
+        self.taxid              = assembly_type["tax_id"]
+        self.assembly_type      = assembly_type["assembly_type"]
+        self.hap_name           = assembly_type["assembly_name"]
+        self.hap_accession      = assembly_type["accession"]
+        self.hap_set_accession  = assembly_type["assembly_set_accession"]
+        self.collection         = self.__iter__()
 
     def __iter__(self):
         for attr, value in self.__dict__.items():

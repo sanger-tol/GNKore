@@ -1,18 +1,19 @@
 import os
 import io
 import requests
+import regex as re
 
 from .haplotype import Haplotype
 
 class Assembly:
     def __init__(self, taxid, children):
-        self.taxid = taxid
-        self.accessions = children
-        self.assembly_type, self.assembly_dict = self.fetch_assembly_data()
+        self.taxid                              = taxid
+        self.accessions                         = children
+        self.assembly_type, self.assembly_dict  = self.fetch_assembly_data()
 
-        self.assembly_data_1, self.assembly_data_2 = self.process_assembly_data()
+        self.assembly_data                      = self.process_assembly_data()
 
-        self.collection = self.__iter__()
+        self.collection                         = self.__iter__()
 
     def __iter__(self):
         for attr, value in self.__dict__.items():
@@ -40,7 +41,7 @@ class Assembly:
         Fetch the revision history for a given assembly accession and return the latest
         accession and assembly name.
         """
-        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{accession}/revision_history?api_key={os.getenv('entrez_api_key')}"
+        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{accession}/revision_history?api_key={os.getenv('ENTREZ_API')}"
 
         headers = {"Accept": "application/json"}
         response = requests.get(api_url, headers=headers)
@@ -99,7 +100,6 @@ class Assembly:
             if current_accession:
                 latest_accession, latest_assembly_name = self.get_latest_revision(current_accession)
                 if latest_accession != current_accession:
-                    print(f"Updated assembly_set_accession: {current_accession} -> {latest_accession}")
                     assembly['assembly_set_accession'] = latest_accession
                 if latest_assembly_name:
                     assembly['assembly_name'] = latest_assembly_name
@@ -108,23 +108,35 @@ class Assembly:
         return updated_assemblies
 
     def determine_assembly_type(self, assembly_dicts):
-        # TODO: WHERE ARE THE MULTI-PRIMARIES
-        # Check if any assembly contains hap1 or hap2 in its name
-        results = []
+        """
+        If any assembly contains hap1 or hap2 in its name
+        """
+        results = {}
+
         for assembly in assembly_dicts:
             name = assembly['assembly_name']
-            print(name)
 
             hap_list = ["hap1","hap2"]
+            if  all(id in name for id in hap_list): # 'assembly_name': 'iyTipFemo hap1.1 / hap2.1'
+                results[name] = "multiple_primaries"
             if any(id in name for id in hap_list):
-                results.append('hap_asm')
+                results[name] = "hap_asm"
             elif "alternate haplotype" in name: # 'assembly_name': 'iyTipFemo1.1 alternate haplotype'
-                results.append('prim_alt')
+                results[name] = "prim_alt"
             elif len(name.split(' ')) < 2: # 'assembly_name': 'iyTipFemo1.1'
-                results.append('prim_alt')
+                results[name] = "prim_alt"
             else:
-                results.append(f'UNKNOWN ASSEMBLY TYPE: {name}')
+                results[name] = "UNKNOWN ASSEMBLY TYPE"
         return results
+
+    def merge_assembly_dicts(self, types, assembly):
+        for i in assembly:
+            if i['assembly_name'] in types:
+                i['assembly_type'] = types[i['assembly_name']]
+            else:
+                print(f"Why is {i['assembly_name']} not in {types}")
+
+        return assembly
 
     def fetch_assembly_data(self):
         """
@@ -136,62 +148,71 @@ class Assembly:
                 if assembly.get('tax_id') == self.taxid:
                     assembly_dicts.append(assembly)
 
-        return self.determine_assembly_type(assembly_dicts), assembly_dicts
+        assembly_types = self.determine_assembly_type(assembly_dicts)
+        merged_dicts = self.merge_assembly_dicts(
+            self.determine_assembly_type(assembly_dicts),
+            assembly_dicts
+        )
+
+        return assembly_types, merged_dicts
 
 
-    def extract_prim_alt_assemblies(self, assembly_dicts, tax_id):
-        """
-        Extract primary and alternate haplotypes from assembly data, ensuring correct tax_id.
-        """
-        primary_assembly_dict = {}
-        alternate_haplotype_dict = {}
+    # def extract_prim_alt_assemblies(self, assembly_dicts, tax_id):
+    #     """
+    #     Extract primary and alternate haplotypes from assembly data, ensuring correct tax_id.
+    #     """
+    #     primary_assembly_dict = {}
+    #     alternate_haplotype_dict = {}
 
-        for assembly_dict in assembly_dicts:
-            if assembly_dict['tax_id'] != tax_id:
-                continue  # Skip assemblies with mismatched tax_id
+    #     for assembly in assembly_dicts:
 
-            assembly_set_accession = assembly_dict['assembly_set_accession']
-            assembly_name = assembly_dict['assembly_name']
+    #         if assembly['tax_id'] != tax_id:
+    #             continue  # Skip assemblies with mismatched tax_id
 
-            if 'alternate haplotype' in assembly_name.lower():
-                alternate_haplotype_dict = {
-                    "accession": assembly_set_accession,
-                    "assembly_name": assembly_name
-                }
-            else:
-                primary_assembly_dict = {
-                    "accession": assembly_set_accession,
-                    "assembly_name": assembly_name
-                }
+    #         assembly_set_accession = assembly['assembly_set_accession']
+    #         assembly_name = assembly['assembly_name']
 
-        return primary_assembly_dict, alternate_haplotype_dict
+    #         if 'alternate haplotype' in assembly_name.lower():
+    #             alternate_haplotype_dict = {
+    #                 "accession": assembly_set_accession,
+    #                 "assembly_name": assembly_name
+    #             }
+    #         else:
+    #             primary_assembly_dict = {
+    #                 "accession": assembly_set_accession,
+    #                 "assembly_name": assembly_name
+    #             }
 
-    def extract_haplotype_assemblies(self, assembly_dicts, tax_id):
-        """Extract the latest haplotype assemblies from the assembly data."""
-        hap1_dict = {}
-        hap2_dict = {}
+    #     return primary_assembly_dict, alternate_haplotype_dict
 
-        for assembly_dict in assembly_dicts:
-            name = assembly_dict['assembly_name'].lower()
-            accession = assembly_dict['assembly_set_accession']
+    # def extract_haplotype_assemblies(self, assembly_dicts, tax_id):
+    #     """Extract the latest haplotype assemblies from the assembly data."""
+    #     hap1_dict = {}
+    #     hap2_dict = {}
 
-            # Identify haplotype 1 and select the latest version
-            if "hap1" in name:
-                if not hap1_dict or accession > hap1_dict["hap1_accession"]:
-                    hap1_dict = {
-                        "accession": accession,
-                        "assembly_name": assembly_dict['assembly_name']
-                    }
+    #     print(assembly_dicts)
 
-            # Identify haplotype 2 and select the latest version
-            elif "hap2" in name:
-                if not hap2_dict or accession > hap2_dict["hap2_accession"]:
-                    hap2_dict = {
-                        "accession": accession,
-                        "assembly_name": assembly_dict['assembly_name']
-                    }
+    #     for assembly_dict in assembly_dicts:
+    #         name = assembly_dict['assembly_name'].lower()
+    #         accession = assembly_dict['assembly_set_accession']
 
-        return hap1_dict, hap2_dict
+    #         # Identify haplotype 1 and select the latest version
+    #         if "hap1" in name:
+    #             if not hap1_dict or accession > hap1_dict["hap1_accession"]:
+    #                 hap1_dict = {
+    #                     "accession": accession,
+    #                     "assembly_name": assembly_dict['assembly_name']
+    #                 }
+
+    #         # Identify haplotype 2 and select the latest version
+    #         elif "hap2" in name:
+    #             if not hap2_dict or accession > hap2_dict["hap2_accession"]:
+    #                 hap2_dict = {
+    #                     "accession": accession,
+    #                     "assembly_name": assembly_dict['assembly_name']
+    #                 }
+
+    #     return hap1_dict, hap2_dict
 
     def extract_multiple_assemblies(self, assembly_dicts, tax_id):
         """Placeholder function to extract multiple primary assemblies."""
@@ -203,27 +224,61 @@ class Assembly:
     def process_assembly_data(self):
         """
         Process assembly types and get further assembly data
-        dict1 = the primary assembly
-        dict2 = hap2/alternate
+        assembly_dict may contain multiple versions of the assembly in different assembly types
+        assembly_dict should be grouped by common value such as assembly version ilKreTrap1.hap1.1 and treated differently.
         """
-        dict1, dict2 = {}, {}
-        all_assemblies_same = all( i == self.assembly_type[0] for i in self.assembly_type)
-        if all_assemblies_same & (len(self.assembly_type) > 0):
+        assembly_types = [y for x, y in self.assembly_type.items()]
+        all_assemblies_same = all( i == assembly_types[0] for i in assembly_types)
 
-            if self.assembly_type[0] == 'hap_asm':
-                dict1, dict2 = self.extract_haplotype_assemblies(self.assembly_dict, self.taxid)
+        assebmly_ordered_list = dict()
+        for individual_assembly in self.assembly_dict:
+            if all_assemblies_same & (assembly_types[0] == "hap_asm"):
+                # THIS NEEDS HARDENING - It'll kill stuff if there are > 2 hap_asms
+                if '1.0' not in assebmly_ordered_list:
+                    assebmly_ordered_list['1.0'] = [individual_assembly]
+                else:
+                    assebmly_ordered_list['1.0'].append(individual_assembly)
+            else:
+                get_tol_assem_version = re.search(r"\d+\.\d+", individual_assembly['assembly_name'])
+                tol_assem_version = get_tol_assem_version.group()
+                if tol_assem_version not in assebmly_ordered_list:
+                    assebmly_ordered_list[tol_assem_version] = [individual_assembly]
+                else:
+                    assebmly_ordered_list[tol_assem_version].append(individual_assembly)
 
-            elif self.assembly_type[0] == 'prim_alt':
-                dict1, dict2 = self.extract_prim_alt_assemblies(self.assembly_dict, self.taxid)
 
-            elif self.assembly_type[0] == 'multiple_primary':
-                dict1 = self.extract_multiple_assemblies(self.assembly_dict, self.taxid)
-                dict2 = {}
+        haplotypes_list = []
+        for assembly_group in assebmly_ordered_list:
+            current_group = assebmly_ordered_list[assembly_group]
+            print(f" ASSEM GROUP {current_group}")
+
+            assembly_type_list = [i["assembly_type"] for i in current_group]
+            all_assemblies_same = all( i == assembly_type_list[0] for i in assembly_type_list)
+
+            # TODO: YEAH WE CAN CONDENSE THIS
+            if all_assemblies_same & (len(assembly_type_list) > 0):
+                if assembly_type_list[0] == 'hap_asm':
+                    print(f"HAP_ASM: {current_group}")
+                    haplotypes_list.append(Haplotype(current_group[0]))
+                    haplotypes_list.append(Haplotype(current_group[1]))
+
+                elif assembly_type_list[0] == 'prim_alt':
+                    print(f"prim_alt: {current_group}")
+                    haplotypes_list.append(Haplotype(current_group[0]))
+                    haplotypes_list.append(Haplotype(current_group[1]))
+
+                elif assembly_type_list[0] == 'multiple_primary':
+                    print(f"multiple_primary: {current_group}")
+                    haplotypes_list.append(Haplotype(current_group[0]))
+                    haplotypes_list.append(Haplotype(current_group[1]))
+
+                else:
+                    print("This is an unknown assembly type")
+                    haplotypes_list.append(Haplotype(current_group[0]))
+                    haplotypes_list.append(Haplotype(current_group[1]))
 
             else:
-                print("This is an unknown assembly type")
+                haplotypes_list.append(Haplotype(current_group[0]))
+                haplotypes_list.append(Haplotype(current_group[1]))
 
-            return Haplotype(dict1, self.assembly_type[0], self.taxid), Haplotype(dict2, self.assembly_type[0], self.taxid)
-
-        else:
-            return dict1, dict2
+        return haplotypes_list
