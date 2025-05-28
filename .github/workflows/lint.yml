@@ -1,13 +1,18 @@
 name: Lint and Commit
-on: push
+on:
+    push:
+        branches: [main, dev, patch]
+    pull_request:
+    release:
+        types: [published]
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-    - uses: chartboost/ruff-action@v1
-      with:
-        args: --check .
-        config: .ruff.toml
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+            - uses: actions/setup-python@v2
+            - uses: chartboost/ruff-action@v1
+              with:
+                  args: --check .
+                  config: .ruff.toml
