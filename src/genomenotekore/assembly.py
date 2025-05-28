@@ -1,9 +1,12 @@
 import os
 import io
+import logging
 import requests
 import regex as re
 
 from .haplotype import Haplotype
+
+logger = logging.getLogger("logger")
 
 class Assembly:
     def __init__(self, taxid, children):
@@ -58,19 +61,19 @@ class Assembly:
                     latest_assembly_name = latest_revision.get("assembly_name", "Unknown assembly name")
 
                     if latest_accession != accession:
-                        print(f"Update found: {accession} -> {latest_accession} ({latest_assembly_name})")
+                        logger.info(f"Update found: {accession} -> {latest_accession} ({latest_assembly_name})")
                     else:
-                        print(f"No update needed for {accession} ({latest_assembly_name}).")
+                        logger.info(f"No update needed for {accession} ({latest_assembly_name}).")
 
                     return latest_accession, latest_assembly_name
                 else:
-                    print(f"No revisions found for {accession}.")
+                    logger.info(f"No revisions found for {accession}.")
                     return accession, None
             except ValueError:
-                print("Error processing JSON response.")
+                logger.info("Error processing JSON response.")
                 return accession, None
         else:
-            print(f"Failed to fetch revision history, status code: {response.status_code}")
+            logger.info(f"Failed to fetch revision history, status code: {response.status_code}")
             return accession, None
 
     def fetch_assembly_details(self, assembly_bioproject):
@@ -89,7 +92,7 @@ class Assembly:
         response = requests.get(url, params=params)
 
         if response.status_code != 200:
-            print(f"Failed to get data for project {assembly_bioproject}")
+            logger.info(f"Failed to get data for project {assembly_bioproject}")
             return None
 
         assemblies = response.json()
@@ -134,7 +137,7 @@ class Assembly:
             if i['assembly_name'] in types:
                 i['assembly_type'] = types[i['assembly_name']]
             else:
-                print(f"Why is {i['assembly_name']} not in {types}")
+                logger.info(f"Why is {i['assembly_name']} not in {types}")
 
         return assembly
 
@@ -250,7 +253,7 @@ class Assembly:
         haplotypes_list = []
         for assembly_group in assebmly_ordered_list:
             current_group = assebmly_ordered_list[assembly_group]
-            print(f" ASSEM GROUP {current_group}")
+            logger.info(f" ASSEM GROUP {current_group}")
 
             assembly_type_list = [i["assembly_type"] for i in current_group]
             all_assemblies_same = all( i == assembly_type_list[0] for i in assembly_type_list)
@@ -258,22 +261,19 @@ class Assembly:
             # TODO: YEAH WE CAN CONDENSE THIS
             if all_assemblies_same & (len(assembly_type_list) > 0):
                 if assembly_type_list[0] == 'hap_asm':
-                    print(f"HAP_ASM: {current_group}")
                     haplotypes_list.append(Haplotype(current_group[0]))
                     haplotypes_list.append(Haplotype(current_group[1]))
 
                 elif assembly_type_list[0] == 'prim_alt':
-                    print(f"prim_alt: {current_group}")
                     haplotypes_list.append(Haplotype(current_group[0]))
                     haplotypes_list.append(Haplotype(current_group[1]))
 
                 elif assembly_type_list[0] == 'multiple_primary':
-                    print(f"multiple_primary: {current_group}")
                     haplotypes_list.append(Haplotype(current_group[0]))
                     haplotypes_list.append(Haplotype(current_group[1]))
 
                 else:
-                    print("This is an unknown assembly type")
+                    logger.info(f"This is an unknown assembly type for group:\n\t{assembly_group}")
                     haplotypes_list.append(Haplotype(current_group[0]))
                     haplotypes_list.append(Haplotype(current_group[1]))
 

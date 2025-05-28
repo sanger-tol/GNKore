@@ -8,6 +8,8 @@ Project has been written by Damon-Lee Pointon to improve functionality, performa
 
 GenomeNoteKore is a series of script to take a list of accession numbers and retrieve information from the NCBI/ENA/COPO databases and then process the data to generate a GenomeNote-Article. These scripts will be used in conjuction with the GenomeNote-Pipeline (sanger-tol/genomenote).
 
+CHANGELOG can be found [here](CHANGELOG.md).
+
 ---
 
 In an effort for test data to be as wide reaching as possible, then file `/src/data/test_list.txt` contains a list of real and false bioproject_ids:

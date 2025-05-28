@@ -1,11 +1,14 @@
 import os
 import io
 import sys
+import logging
 import requests
-import tenacity
+# import tenacity
 import xml.etree.ElementTree as ET
 
 from .assembly import Assembly
+
+logger = logging.getLogger("logger")
 
 class Bioproject:
     def __init__(self, bioproject_id, note):
@@ -61,6 +64,7 @@ class Bioproject:
         response = requests.get(f"https://www.ebi.ac.uk/ena/browser/api/xml/{self.bioproject}")
         if response.status_code != 200:
             sys.exit(f"Failed to get data for project {self.bioproject}")
+            logger.warn(f"Failed to get data for project {self.bioproject}")
             return None
 
         return ET.fromstring(response.text)
@@ -112,6 +116,7 @@ class Bioproject:
                 return {}
         else:
             sys.exit(f"NCBI_get_taxonomy_lineage_and_ranks: Failed to fetch data for taxid {self.taxid}, status code: {response.status_code}\n Data = {response.content}")
+            logger.warn(f"NCBI_get_taxonomy_lineage_and_ranks: Failed to fetch data for taxid {self.taxid}, status code: {response.status_code}\n Data = {response.content}")
             return {}
 
     def GBIF_get_data(self):

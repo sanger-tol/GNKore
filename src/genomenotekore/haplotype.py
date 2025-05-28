@@ -1,4 +1,7 @@
 import io
+import logging
+
+logger = logging.getLogger("logger")
 
 class Haplotype:
     def __init__(self, assembly_type):

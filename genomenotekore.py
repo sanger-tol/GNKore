@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import os
 import argparse
 import logging
 import textwrap
@@ -18,6 +17,7 @@ logging.basicConfig(
         logging.FileHandler("genomenotekore.log")  # logs to file
     ]
 )
+logger = logging.getLogger('tcpserver')
 
 TIME = date.today()
 VERSION = "0.1.0"
@@ -73,7 +73,7 @@ def main(args):
 
     bioproject_list = file_to_list(args.bioproject_file)
     for bioproject_line in bioproject_list:
-        logging.info(f"Processing Bioproject: {bioproject_line}")
+        logger.info(f"Processing Bioproject: {bioproject_line}")
         bioproject_data = Bioproject(bioproject_line[0].strip(), bioproject_line[1].strip())
         print(bioproject_data)
 
