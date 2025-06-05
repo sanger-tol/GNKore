@@ -23,7 +23,6 @@ class Bioproject:
         self.gbif_url                               = gbif_data["gbif_url"]
         self.gbif_usage_key                         = gbif_data["gbif_usage_key"]
         self.assembly_data                          = Assembly(self.taxid, self.child_accessions)
-
         self.collection = self.__iter__()
 
     def __iter__(self):
@@ -54,7 +53,7 @@ class Bioproject:
         raw_xml = self.fetch_data()
         title = raw_xml.find(".//TITLE")
         description = title.text if title is not None else "No description available"
-        tax_id = str(raw_xml.find(".//TAXON_ID").text) if raw_xml.find(".//TAXON_ID") is not None else None
+        tax_id = str(raw_xml.find(".//TAXON_ID").text) if raw_xml.find(".//TAXON_ID") is not None else None # pyright: ignore
         return raw_xml, description, tax_id
 
     def fetch_data(self):
@@ -81,18 +80,18 @@ class Bioproject:
         lineage = []
         ranks = {'class': None, 'family': None, 'order': None, 'phylum': None, 'species': None}
         for taxon in root.iter('Taxon'):
-            rank = taxon.find('Rank').text if taxon.find('Rank') is not None else None
-            scientific_name = taxon.find('ScientificName').text if taxon.find('ScientificName') is not None else None
+            rank = taxon.find('Rank').text if taxon.find('Rank') is not None else None # pyright: ignore
+            scientific_name = taxon.find('ScientificName').text if taxon.find('ScientificName') is not None else None # pyright: ignore
 
             # Assign scientific names to their respective ranks
             if rank in ranks:
-                ranks[rank] = scientific_name
+                ranks[rank] = scientific_name # pyright: ignore
 
             # Extract lineage information
             lineage_ex = taxon.find('LineageEx')
             if lineage_ex is not None:
                 for element in lineage_ex:
-                    lineage.append(element.find('ScientificName').text)
+                    lineage.append(element.find('ScientificName').text) # pyright: ignore
 
         # Remove "cellular organisms" if present at the start of the lineage
         if lineage and lineage[0] == "cellular organisms":

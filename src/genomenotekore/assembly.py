@@ -4,6 +4,7 @@ import logging
 import requests
 import regex as re
 
+from .generics import find
 from .haplotype import Haplotype
 
 logger = logging.getLogger("logger")
@@ -15,6 +16,11 @@ class Assembly:
         self.assembly_type, self.assembly_dict  = self.fetch_assembly_data()
 
         self.assembly_data                      = self.process_assembly_data()
+
+        # HAP_ASM CHROMOSOME BLOCK
+        self.hap_assembly_chr_data              = self.combine_hap_chromosome_tables()
+        self.organised_hap_data                 = self.organise_hap_chromosome_data()
+
 
         self.collection                         = self.__iter__()
 
@@ -93,7 +99,7 @@ class Assembly:
 
         if response.status_code != 200:
             logger.info(f"Failed to get data for project {assembly_bioproject}")
-            return None
+            return []
 
         assemblies = response.json()
 
@@ -243,7 +249,7 @@ class Assembly:
                     assebmly_ordered_list['1.0'].append(individual_assembly)
             else:
                 get_tol_assem_version = re.search(r"\d+\.\d+", individual_assembly['assembly_name'])
-                tol_assem_version = get_tol_assem_version.group()
+                tol_assem_version = get_tol_assem_version.group() # pyright: ignore
                 if tol_assem_version not in assebmly_ordered_list:
                     assebmly_ordered_list[tol_assem_version] = [individual_assembly]
                 else:
@@ -253,7 +259,6 @@ class Assembly:
         haplotypes_list = []
         for assembly_group in assebmly_ordered_list:
             current_group = assebmly_ordered_list[assembly_group]
-            logger.info(f" ASSEM GROUP {current_group}")
 
             assembly_type_list = [i["assembly_type"] for i in current_group]
             all_assemblies_same = all( i == assembly_type_list[0] for i in assembly_type_list)
@@ -282,3 +287,71 @@ class Assembly:
                 haplotypes_list.append(Haplotype(current_group[1]))
 
         return haplotypes_list
+
+
+    def format_dict(self, input_dict):
+        pass
+
+
+    def combine_hap_chromosome_tables(self):
+        """
+        Due to the design of this program the Haplotypes of a hap_asm can't be
+        compared to each other unlike in the original dict of dicts style the
+        original script used.
+
+        So we move back into the Assembly space for the comparison
+        of:
+            - For each Haplotype (i in assembly_data)
+            - for each unique tolid, if the hap_value is not None and assembly_type is hap_asm
+                - Add data to a list for formatting
+
+        """
+        dict = {}
+        for i in self.assembly_data:
+            if not i.tolid in dict and i.hap_value != None and i.assembly_type == "hap_asm":
+                dict[i.tolid] = [
+                    {
+                        "hap_value": i.hap_value,
+                        "assembly_type": i.assembly_type,
+                        "chr_table": i.chromosome_table,
+                        "assembly_level": i.assembly_level
+                    }
+                ]
+            elif i.tolid in dict and i.hap_value != None and i.assembly_type == "hap_asm":
+                dict[i.tolid].append(
+                    {
+                        "hap_value": i.hap_value,
+                        "assembly_type": i.assembly_type,
+                        "chr_table": i.chromosome_table,
+                        "assembly_level": i.assembly_level
+                    }
+                )
+            else:
+                pass
+
+        return dict
+
+    def organise_hap_chromosome_data(self):
+        for x, y in self.hap_assembly_chr_data.items():
+            hap1: dict = y[find(y, "hap_value", "hap1")]
+            hap2: dict = y[find(y, "hap_value", "hap2")]
+
+            chr_data = []
+            if hap1["assembly_level"] == "chromosome" and hap2["assmembly_level"] == "scaffold":
+                # get chromosome_data of hap1
+                chr_data = hap1["chr_table"]
+            elif hap1["assembly_level"] == "chromosome" and hap2["assmembly_level"] != "scaffold":
+                # combine the chr_tables of the Haplotypes
+                chr_data = combine_haplotype_chr_tables(hap1["chr_table"], hap2["chr_table"])
+
+            #             hap1_sex_chromosomes = identify_sex_chromosomes(
+            #               chromosome_context.get('hap1_chromosome_data', [])
+            #               if 'hap1_chromosome_data' in chromosome_context
+            #               else [{'molecule': row['hap1_molecule']} for row in chromosome_context.get('chromosome_data', []) if row.get('hap1_molecule')]
+            # )
+            hap1_sex_chr = get_sex_chromosomes(chr_data)
+
+
+            hap2_sex_chr = get_sex_chromosomes(
+                [{'molecule': row['hap2_molecule']} for row in chr_data if row.get('hap2_molecule')]
+            ) if chr_data != []
