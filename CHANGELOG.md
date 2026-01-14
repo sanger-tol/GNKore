@@ -5,10 +5,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.2.0 - Rubgy Goat [30/05/2025]
 
-NOTE: Due to how the script is set up, it can't really combine the two haplotypes chromosome_data together.
-        - This would require two subclasses to be able to interact with each other.
-        - An option is that the hap1 gets both accessions and processes both from this point.
-            - Would require effectively "switching off" hap2 processing here.
+Version 0.2.0 of GNKore
+
+- Reorganised the project scripts slightly so that GNKore should be actually installable.
+- Added workflow for building a container, the script is to be used in the GenomeNote Meta Pipeline so this is needed.
+- Adding RawAssemblyData class
+    - collects data from ENA about the data used in the assembly of the bioproject.
+- Refactoring of some code.
+
+NOTE: Due to how the script is set up, it can't really combine the two haplotypes chromosome_data together. This is under investigation.
 
 
 ## v0.1.0 - Rugby Chicken [12/05/2025]
