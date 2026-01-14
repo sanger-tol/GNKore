@@ -3,48 +3,59 @@ import os
 import requests
 import logging
 
-from .generics import custom_sort_order, format_sex_chromosomes
+from .generics import custom_sort_order, format_sex_chromosomes, fetch_data
 
 
-logger = logging.getLogger("logger")
+logger = logging.getLogger("gnkore_logger")
 
 class Haplotype:
     def __init__(self, assembly_type):
-        self.taxid                   = assembly_type["tax_id"]
-        self.assembly_type           = assembly_type["assembly_type"]
-        self.hap_name                = assembly_type["assembly_name"]
-        self.hap_value               = self.hap_name.split(".")[1] if ".hap" in str(self.hap_name) else "NA"
-        self.hap_accession           = assembly_type["accession"]
-        self.hap_set_accession       = assembly_type["assembly_set_accession"]
+        self.taxid: str                     = assembly_type["tax_id"]
+        self.bioproject: str                = assembly_type["bioproject"]
+        self.assembly_type: str             = assembly_type["assembly_type"]
+        self.hap_name: str                  = assembly_type["assembly_name"]
+        self.hap_value: str                 = self.get_assembly_version()
+        self.hap_accession: str             = assembly_type["accession"]
+        self.hap_set_accession: str         = assembly_type["assembly_set_accession"]
+
+        ### EBI DATA
+        ebi_assembly_data          = fetch_data(self.hap_set_accession)
+        fasta_ftp, self.platforms          = self.parse_ebi_xml(ebi_assembly_data)
+        # fasta_ftp should only ever be 2 items, a dat and fasta file
+        data_filegen = (i for i in fasta_ftp if i.endswith("dat.gz"))
+        fasta_filegen = (i for i in fasta_ftp if i.endswith("fasta.gz"))
+        fasta_data_file: str = next(data_filegen)
+        fasta_fasta_file: str = next(fasta_filegen)
 
         ### NCBI DATASET API CHUNK
-        ncbi_assembly_data           = self.NCBI_fetch_primary_assembly_info()
-        self.tolid                   = ncbi_assembly_data.get("tolid", "NA")                    # pyright: ignore
-        self.assembly_level          = ncbi_assembly_data.get("assembly_level", "NA")           # pyright: ignore
-        self.wgs_project_accession   = ncbi_assembly_data.get("wgs_project_accession", "NA")    # pyright: ignore
-        self.raw_total_length        = int(ncbi_assembly_data.get("total_length", 0))           # pyright: ignore
+        ncbi_assembly_data         = self.NCBI_fetch_primary_assembly_info()
+        self.tolid: str                     = ncbi_assembly_data.get("tolid", "NA")
+        self.assembly_level: str            = ncbi_assembly_data.get("assembly_level", "NA")
+        self.wgs_project_accession: str     = ncbi_assembly_data.get("wgs_project_accession", "NA")
+        self.raw_total_length: int          = int(ncbi_assembly_data.get("total_length", 0))
 
         # Format as 1,000 rather than 1000
-        self.contig_count            = f"{int(ncbi_assembly_data.get("num_contigs", 0)):,}"     # pyright: ignore
-        self.scaffold_count          = f"{int(ncbi_assembly_data.get("num_scaffolds", 0)):,}"   # pyright: ignore
+        self.contig_count                   = f"{int(ncbi_assembly_data.get("num_contigs", 0)):,}"     # pyright: ignore
+        self.scaffold_count                 = f"{int(ncbi_assembly_data.get("num_scaffolds", 0)):,}"   # pyright: ignore
 
         # Format as val / 1e6 to get val in mb
-        self.contig_N50_mb           = f"{int(ncbi_assembly_data.get("contig_N50", 0)) / 1e6:,.2f}"     # pyright: ignore
-        self.scaffold_N50_mb         = f"{int(ncbi_assembly_data.get("scaffold_N50", 0)) / 1e6:,.2f}"   # pyright: ignore
+        self.contig_N50_mb                  = f"{int(ncbi_assembly_data.get("contig_N50", 0)) / 1e6:,.2f}"     # pyright: ignore
+        self.scaffold_N50_mb                = f"{int(ncbi_assembly_data.get("scaffold_N50", 0)) / 1e6:,.2f}"   # pyright: ignore
 
         # Format genome length as raw, mb and gb
-        self.genome_length_unrounded = int(ncbi_assembly_data.get("genome_length_unrounded", 0))        # pyright: ignore
-        self.genome_length_mb        = f"{self.genome_length_unrounded / 1e6:,.2f}"
-        self.genome_length_gb        = f"{self.genome_length_unrounded / 1e9:,.2f}"
+        self.genome_length_unrounded: int   = int(ncbi_assembly_data.get("genome_length_unrounded", 0))        # pyright: ignore
+        self.genome_length_mb               = f"{self.genome_length_unrounded / 1e6:,.2f}"
+        self.genome_length_gb               = f"{self.genome_length_unrounded / 1e9:,.2f}"
 
         # No formatting needed
         self.chromosome_count        = int(ncbi_assembly_data.get("chromosome_count", 0))               # pyright: ignore
         self.coverage                = int(ncbi_assembly_data.get("coverage", 0))                       # pyright: ignore
 
         self.assembly_statistics     = self.NCBI_fetch_assembly_statistics()
-        self.longest_scaffold        = self.get_longest_scaffold(self.assembly_statistics) if self.assembly_statistics != None else None
 
-        if assembly_type == "pri_alt":
+        self.longest_scaffold: int  = self.get_longest_scaffold(self.assembly_statistics) if (self.assembly_statistics != None and len(self.assembly_statistics) >= 1) else None
+
+        if assembly_type == "prim_alt":
             self.chromosome_table    = self.get_chromosome_table(self.assembly_statistics)
         elif assembly_type == "hap_asm":
             # If chromosome scale then get chromosome_table
@@ -66,24 +77,34 @@ class Haplotype:
 
     def __iter__(self):
         for attr, value in self.__dict__.items():
-            yield attr, value
+            if attr not in ["raw_xml","collection", "assembly_dict", "assembly_type"]:
+                yield attr, value
 
-    def __repr__(self):
-        return self.for_display()
 
-    def __str__(self):
-        return self.for_display()
+    def get_assembly_version(self):
+        """
+        Attempt to get haplotype info from the hap_name
+        """
+        primary_ids: list[str]  = [".1", "primary", "primary haplotype"]
+        haplotype_ids: list[str] = ["alternate haplotype", ".hap"]
 
-    def for_display(self):
-        txt = io.StringIO()
-        txt.write(f"\n\t\t  {self.__class__.__name__}(\n")
-        [
-            txt.write(f"\t\t\t{a} = '{v}' \n")
-            for a, v in self.collection
-            if a not in ["raw_xml","collection"]
-        ]
-        txt.write("\t\t  )")
-        return txt.getvalue()
+        for item in primary_ids:
+            if self.hap_name.endswith(item):
+                return "Primary"
+                break
+
+        for item in haplotype_ids:
+            if item in self.hap_name:
+                return "Haplotype"
+
+
+    def parse_ebi_xml(self, ebi_xml):
+        url_list = []
+        fasta_url = ebi_xml.find(".//ASSEMBLY_LINKS")
+        for group in fasta_url:
+            url_list.append(group.find(".//URL").text)
+
+        return url_list, ebi_xml.find(".//PLATFORM").text
 
 
     def NCBI_fetch_primary_assembly_info(self):
@@ -139,7 +160,7 @@ class Haplotype:
         """
         Fetch assembly stats from the NCBI API v2.
         """
-        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{self.hap_accession}/sequence_reports"
+        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{self.hap_set_accession}/sequence_reports"
 
         headers = {
             'accept': 'application/json',

@@ -1,19 +1,21 @@
 import os
 import io
+import sys
 import logging
 import requests
 import regex as re
 
 from .generics import find
 from .haplotype import Haplotype
+from .raw_data import RawAssemblyData
 
-logger = logging.getLogger("logger")
+logger = logging.getLogger("gnkore_logger")
 
 class Assembly:
     def __init__(self, taxid, children):
         self.taxid                              = taxid
         self.accessions                         = children
-        self.assembly_type, self.assembly_dict  = self.fetch_assembly_data()
+        self.assembly_type, self.assembly_dict, self.raw_data = self.fetch_assembly_data()
 
         self.assembly_data                      = self.process_assembly_data()
 
@@ -21,29 +23,20 @@ class Assembly:
         self.hap_assembly_chr_data              = self.combine_hap_chromosome_tables()
         self.organised_hap_data                 = self.organise_hap_chromosome_data()
 
-
         self.collection                         = self.__iter__()
+
 
     def __iter__(self):
         for attr, value in self.__dict__.items():
-            yield attr, value
+            if attr not in ["raw_xml","collection", "assembly_dict", "assembly_type"]:
+                if isinstance(value, list):
+                    if isinstance(value[0], Haplotype) or isinstance(value[0], RawAssemblyData):
+                        yield attr, [dict(item) for item in value]
+                    else:
+                        yield attr, value
+                else:
+                    yield attr, value
 
-    def __repr__(self):
-        return self.for_display()
-
-    def __str__(self):
-        return self.for_display()
-
-    def for_display(self):
-        txt = io.StringIO()
-        txt.write(f"\n\t  {self.__class__.__name__}(\n")
-        [
-            txt.write(f"\t\t{a} = '{v}' \n")
-            for a, v in self.collection
-            if a not in ["raw_xml","collection", "assembly_dict", "assembly_type"]
-        ]
-        txt.write("\t  )")
-        return txt.getvalue()
 
     def get_latest_revision(self, accession):
         """
@@ -82,6 +75,7 @@ class Assembly:
             logger.info(f"Failed to fetch revision history, status code: {response.status_code}")
             return accession, None
 
+
     def fetch_assembly_details(self, assembly_bioproject):
         """
         Fetch specific assembly details for a given assembly BioProject and update
@@ -97,6 +91,7 @@ class Assembly:
         }
         response = requests.get(url, params=params)
 
+
         if response.status_code != 200:
             logger.info(f"Failed to get data for project {assembly_bioproject}")
             return []
@@ -104,17 +99,26 @@ class Assembly:
         assemblies = response.json()
 
         updated_assemblies = []
-        for assembly in assemblies:
-            current_accession = assembly.get('assembly_set_accession')
-            if current_accession:
-                latest_accession, latest_assembly_name = self.get_latest_revision(current_accession)
-                if latest_accession != current_accession:
-                    assembly['assembly_set_accession'] = latest_accession
-                if latest_assembly_name:
-                    assembly['assembly_name'] = latest_assembly_name
-            updated_assemblies.append(assembly)
+
+        if len(assemblies) == 0:
+            logger.info(f"No data for project {assembly_bioproject}: likely it's raw data")
+            updated_assemblies.append({"bioproject": assembly_bioproject, "data_found": False})
+        else:
+            for assembly in assemblies:
+                current_accession = assembly.get('assembly_set_accession')
+                if current_accession:
+                    latest_accession, latest_assembly_name = self.get_latest_revision(current_accession)
+                    if latest_accession != current_accession:
+                        assembly['assembly_set_accession'] = latest_accession
+                    if latest_assembly_name:
+                        assembly['assembly_name'] = latest_assembly_name
+
+                assembly["bioproject"] = assembly_bioproject
+                assembly["data_found"] = True
+                updated_assemblies.append(assembly)
 
         return updated_assemblies
+
 
     def determine_assembly_type(self, assembly_dicts):
         """
@@ -138,6 +142,7 @@ class Assembly:
                 results[name] = "UNKNOWN ASSEMBLY TYPE"
         return results
 
+
     def merge_assembly_dicts(self, types, assembly):
         for i in assembly:
             if i['assembly_name'] in types:
@@ -147,15 +152,23 @@ class Assembly:
 
         return assembly
 
+
     def fetch_assembly_data(self):
         """
         Fetch and process assembly data for a BioProject, ensuring correct tax_id.
         """
-        assembly_dicts = []
+        assembly_dicts: list[dict] = []
+        raw_dicts: list[RawAssemblyData] = []
         for bioproject in self.accessions:
             for assembly in self.fetch_assembly_details(bioproject):
-                if assembly.get('tax_id') == self.taxid:
-                    assembly_dicts.append(assembly)
+                if assembly["data_found"] == True:
+                    if assembly.get('tax_id') == self.taxid:
+                        assembly["bioproject"] = bioproject
+                        assembly_dicts.append(assembly)
+                elif assembly["data_found"] == False:
+                    raw_dicts.append(RawAssemblyData(bioproject))
+                else:
+                    logger.warning(f"NO DATA FOUND FOR BIOPROJECT: {bioproject} -- {assembly}")
 
         assembly_types = self.determine_assembly_type(assembly_dicts)
         merged_dicts = self.merge_assembly_dicts(
@@ -163,7 +176,7 @@ class Assembly:
             assembly_dicts
         )
 
-        return assembly_types, merged_dicts
+        return assembly_types, merged_dicts, raw_dicts
 
 
     # def extract_prim_alt_assemblies(self, assembly_dicts, tax_id):
@@ -331,6 +344,7 @@ class Assembly:
 
         return dict
 
+
     def organise_hap_chromosome_data(self):
         for x, y in self.hap_assembly_chr_data.items():
             hap1: dict = y[find(y, "hap_value", "hap1")]
@@ -342,16 +356,17 @@ class Assembly:
                 chr_data = hap1["chr_table"]
             elif hap1["assembly_level"] == "chromosome" and hap2["assmembly_level"] != "scaffold":
                 # combine the chr_tables of the Haplotypes
-                chr_data = combine_haplotype_chr_tables(hap1["chr_table"], hap2["chr_table"])
+                print("Hello")
+                # chr_data = combine_haplotype_chr_tables(hap1["chr_table"], hap2["chr_table"])
 
             #             hap1_sex_chromosomes = identify_sex_chromosomes(
             #               chromosome_context.get('hap1_chromosome_data', [])
             #               if 'hap1_chromosome_data' in chromosome_context
             #               else [{'molecule': row['hap1_molecule']} for row in chromosome_context.get('chromosome_data', []) if row.get('hap1_molecule')]
             # )
-            hap1_sex_chr = get_sex_chromosomes(chr_data)
+            # hap1_sex_chr = get_sex_chromosomes(chr_data)
 
 
-            hap2_sex_chr = get_sex_chromosomes(
-                [{'molecule': row['hap2_molecule']} for row in chr_data if row.get('hap2_molecule')]
-            ) if chr_data != []
+            # hap2_sex_chr = get_sex_chromosomes(
+            #     [{'molecule': row['hap2_molecule']} for row in chr_data if row.get('hap2_molecule')]
+            # ) if chr_data != []

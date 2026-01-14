@@ -1,9 +1,24 @@
 import sys
+import requests
 import regex as re
+import xml.etree.ElementTree as ET
 
 """
 Generic Functions with multiple uses
 """
+
+def fetch_data(bioproject_id):
+    """
+    Fetches data for a given umbrella BioProject.
+    """
+    response = requests.get(f"https://www.ebi.ac.uk/ena/browser/api/xml/{bioproject_id}")
+    if response.status_code != 200:
+        sys.exit(f"Failed to get data for project {bioproject_id}")
+        logger.warn(f"Failed to get data for project {bioproject_id}")
+        return None
+
+    return ET.fromstring(response.text)
+
 
 def find(lst, key, value):
     """
