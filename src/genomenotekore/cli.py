@@ -54,8 +54,7 @@ def parse_args(argv = None):
     parser.add_argument(
         "-t", "--template_file",
         help = "Path to the template Word Document",
-        default = "./template/template.docx",
-        type = argparse.FileType('r')
+        default = "./template/template.docx"
     )
 
     parser.add_argument(
