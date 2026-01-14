@@ -1,9 +1,7 @@
 import os
-import io
 import sys
 import logging
 import requests
-# import tenacity # <-
 import xml.etree.ElementTree as ET
 
 from .assembly import Assembly

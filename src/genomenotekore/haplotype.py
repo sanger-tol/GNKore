@@ -1,4 +1,3 @@
-import io
 import os
 import requests
 import logging
@@ -24,8 +23,8 @@ class Haplotype:
         # fasta_ftp should only ever be 2 items, a dat and fasta file
         data_filegen = (i for i in fasta_ftp if i.endswith("dat.gz"))
         fasta_filegen = (i for i in fasta_ftp if i.endswith("fasta.gz"))
-        fasta_data_file: str = next(data_filegen)
-        fasta_fasta_file: str = next(fasta_filegen)
+        self.fasta_data_file: str           = next(data_filegen)
+        self.fasta_fasta_file: str          = next(fasta_filegen)
 
         ### NCBI DATASET API CHUNK
         ncbi_assembly_data         = self.NCBI_fetch_primary_assembly_info()
@@ -53,7 +52,7 @@ class Haplotype:
 
         self.assembly_statistics     = self.NCBI_fetch_assembly_statistics()
 
-        self.longest_scaffold: int  = self.get_longest_scaffold(self.assembly_statistics) if (self.assembly_statistics != None and len(self.assembly_statistics) >= 1) else None
+        self.longest_scaffold: int  = self.get_longest_scaffold(self.assembly_statistics) if (self.assembly_statistics is not None and len(self.assembly_statistics) >= 1) else None
 
         if assembly_type == "prim_alt":
             self.chromosome_table    = self.get_chromosome_table(self.assembly_statistics)
@@ -69,8 +68,8 @@ class Haplotype:
         self.combine_the_haps        = True if self.assembly_level != 'scaffold' else False
 
         # Turn off sex chromosome ID if assembly type is hap_asm
-        self.sex_chromosomes         = self.get_sex_chromosomes(self.chromosome_table) if self.chromosome_table != None and self.assembly_type != "hap_asm" else None
-        self.formatted_sex_chr       = format_sex_chromosomes(self.sex_chromosomes) if self.sex_chromosomes != None else None
+        self.sex_chromosomes         = self.get_sex_chromosomes(self.chromosome_table) if self.chromosome_table is not None and self.assembly_type != "hap_asm" else None
+        self.formatted_sex_chr       = format_sex_chromosomes(self.sex_chromosomes) if self.sex_chromosomes is not None else None
 
 
         self.collection              = self.__iter__()

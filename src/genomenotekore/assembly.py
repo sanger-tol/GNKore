@@ -1,11 +1,9 @@
 import os
-import io
-import sys
 import logging
 import requests
 import regex as re
 
-from .generics import find
+# from .generics import find
 from .haplotype import Haplotype
 from .raw_data import RawAssemblyData
 
@@ -21,7 +19,7 @@ class Assembly:
 
         # HAP_ASM CHROMOSOME BLOCK
         self.hap_assembly_chr_data              = self.combine_hap_chromosome_tables()
-        self.organised_hap_data                 = self.organise_hap_chromosome_data()
+        # self.organised_hap_data                 = self.organise_hap_chromosome_data()
 
         self.collection                         = self.__iter__()
 
@@ -161,11 +159,11 @@ class Assembly:
         raw_dicts: list[RawAssemblyData] = []
         for bioproject in self.accessions:
             for assembly in self.fetch_assembly_details(bioproject):
-                if assembly["data_found"] == True:
+                if assembly["data_found"]:
                     if assembly.get('tax_id') == self.taxid:
                         assembly["bioproject"] = bioproject
                         assembly_dicts.append(assembly)
-                elif assembly["data_found"] == False:
+                elif not assembly["data_found"]:
                     raw_dicts.append(RawAssemblyData(bioproject))
                 else:
                     logger.warning(f"NO DATA FOUND FOR BIOPROJECT: {bioproject} -- {assembly}")
@@ -321,7 +319,7 @@ class Assembly:
         """
         dict = {}
         for i in self.assembly_data:
-            if not i.tolid in dict and i.hap_value != None and i.assembly_type == "hap_asm":
+            if i.tolid not in dict and i.hap_value is not None and i.assembly_type == "hap_asm":
                 dict[i.tolid] = [
                     {
                         "hap_value": i.hap_value,
@@ -330,7 +328,7 @@ class Assembly:
                         "assembly_level": i.assembly_level
                     }
                 ]
-            elif i.tolid in dict and i.hap_value != None and i.assembly_type == "hap_asm":
+            elif i.tolid in dict and i.hap_value is not None and i.assembly_type == "hap_asm":
                 dict[i.tolid].append(
                     {
                         "hap_value": i.hap_value,
@@ -345,19 +343,19 @@ class Assembly:
         return dict
 
 
-    def organise_hap_chromosome_data(self):
-        for x, y in self.hap_assembly_chr_data.items():
-            hap1: dict = y[find(y, "hap_value", "hap1")]
-            hap2: dict = y[find(y, "hap_value", "hap2")]
+    # def organise_hap_chromosome_data(self):
+    #     for x, y in self.hap_assembly_chr_data.items():
+    #         hap1: dict = y[find(y, "hap_value", "hap1")]
+    #         hap2: dict = y[find(y, "hap_value", "hap2")]
 
-            chr_data = []
-            if hap1["assembly_level"] == "chromosome" and hap2["assmembly_level"] == "scaffold":
-                # get chromosome_data of hap1
-                chr_data = hap1["chr_table"]
-            elif hap1["assembly_level"] == "chromosome" and hap2["assmembly_level"] != "scaffold":
-                # combine the chr_tables of the Haplotypes
-                print("Hello")
-                # chr_data = combine_haplotype_chr_tables(hap1["chr_table"], hap2["chr_table"])
+    #         chr_data = []
+    #         if hap1["assembly_level"] == "chromosome" and hap2["assmembly_level"] == "scaffold":
+    #             # get chromosome_data of hap1
+    #             chr_data = hap1["chr_table"]
+    #         elif hap1["assembly_level"] == "chromosome" and hap2["assmembly_level"] != "scaffold":
+    #             # combine the chr_tables of the Haplotypes
+    #             print("Hello")
+    #             # chr_data = combine_haplotype_chr_tables(hap1["chr_table"], hap2["chr_table"])
 
             #             hap1_sex_chromosomes = identify_sex_chromosomes(
             #               chromosome_context.get('hap1_chromosome_data', [])
