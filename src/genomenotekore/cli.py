@@ -68,7 +68,12 @@ def parse_args(argv = None):
         "-j", "--to_json",
         help = "Export data to json file",
         action='store_true'
+    )
 
+    parser.add_argument(
+        "-s", "--to_stdout",
+        help = "Print the json of data",
+        action='store_true'
     )
 
     return parser.parse_args(argv)
@@ -86,8 +91,13 @@ def main():
         logger.info(f"Processing Bioproject: {bioproject_line}")
         bioproject_data = Bioproject(bioproject_line[0].strip(), bioproject_line[1].strip())
 
-        if args.to_json:
+        if args.to_json or args.to_stdout:
             logger.info(f"Converting to JSON output: saving to ./{bioproject_line[0]}.json")
             jsonised = json.dumps(dict(bioproject_data))
 
-            print(jsonised)
+            if args.to_json:
+                with open (f"{bioproject_line[0]}.json", 'w') as json_out:
+                    json_out.write(jsonised)
+
+            if args.to_stdout:
+                print(jsonised)
