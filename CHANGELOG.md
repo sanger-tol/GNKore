@@ -3,7 +3,15 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.2.0 - Rubgy Goat [30/05/2025]
+## v0.2.1 - Rugby Goat (H1) [15/01/2025]
+
+Version 0.2.1 of GNKore
+
+- Adding jq to the docker file to pretty print the json output.
+- Removing the input file as a mandatory file, replacing with option of file or string
+- Some minor refactoring of cli.py
+
+## v0.2.0 - Rubgy Goat [14/01/2025]
 
 Version 0.2.0 of GNKore
 

@@ -7,7 +7,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 USER root
 
 RUN apt-get update \
-    && apt-get install -y procps
+    && apt-get install -y procps jq
 
 RUN pip install uv requests
 

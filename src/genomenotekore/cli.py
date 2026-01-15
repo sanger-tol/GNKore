@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger('gnkore_logger')
 
 TIME = date.today()
-VERSION = "0.1.0"
+VERSION = "0.2.1"
 DESCRIPTION = f"""
 | ---
 | GenomeNoteKore
@@ -46,8 +46,15 @@ def parse_args(argv = None):
         description = textwrap.dedent(DESCRIPTION)
     )
 
-    parser.add_argument(
-        "bioproject_file",
+    group = parser.add_mutually_exclusive_group(required=True)
+
+    group.add_argument(
+        "-i", "--bioproject_id",
+        help = "A singular bioproject_id provided by the command line"
+    )
+
+    group.add_argument(
+        "-b", "--bioproject_file",
         help = "Path to a txt file containing 1 bioproject ID per line."
     )
 
@@ -78,6 +85,28 @@ def parse_args(argv = None):
     return parser.parse_args(argv)
 
 
+def output_data(to_json, to_stdout, id, data):
+    """
+    Function to control the output of data
+    """
+    if to_json or to_stdout:
+        logger.info(f"Converting to JSON output: saving to ./{id}.json")
+        jsonised = json.dumps(dict(data))
+
+        if to_json:
+            with open (f"{id}.json", 'w') as json_out:
+                json_out.write(jsonised)
+
+        if to_stdout:
+            print(jsonised)
+
+
+def run_bioproject(to_json, to_stdout, id, note=None):
+    logger.info(f"Processing Bioproject: {id}\n\tWith note: {note if note else "NA"}")
+    bioproject_data = Bioproject(id, note)
+    output_data(to_json, to_stdout, id, bioproject_data)
+
+
 def main():
     args = parse_args()
 
@@ -85,18 +114,10 @@ def main():
     # os.getenv() is used later on to get the value
     load_dotenv(args.environmental_values)
 
-    bioproject_list = file_to_list(args.bioproject_file)
-    for bioproject_line in bioproject_list:
-        logger.info(f"Processing Bioproject: {bioproject_line}")
-        bioproject_data = Bioproject(bioproject_line[0].strip(), bioproject_line[1].strip())
+    if args.bioproject_file:
+        bioproject_list = file_to_list(args.bioproject_file)
+        for bioproject_line in bioproject_list:
+            run_bioproject(args.to_json, args.to_stdout, bioproject_line[0].strip(), bioproject_line[1].strip())
 
-        if args.to_json or args.to_stdout:
-            logger.info(f"Converting to JSON output: saving to ./{bioproject_line[0]}.json")
-            jsonised = json.dumps(dict(bioproject_data))
-
-            if args.to_json:
-                with open (f"{bioproject_line[0]}.json", 'w') as json_out:
-                    json_out.write(jsonised)
-
-            if args.to_stdout:
-                print(jsonised)
+    elif args.bioproject_id:
+        run_bioproject(args.to_json, args.to_stdout, args.bioproject_id)

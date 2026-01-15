@@ -28,8 +28,9 @@ class Assembly:
         for attr, value in self.__dict__.items():
             if attr not in ["raw_xml","collection", "assembly_dict", "assembly_type"]:
                 if isinstance(value, list):
-                    if isinstance(value[0], Haplotype) or isinstance(value[0], RawAssemblyData):
-                        yield attr, [dict(item) for item in value]
+                    if len(value) > 0:
+                        if isinstance(value[0], Haplotype) or isinstance(value[0], RawAssemblyData):
+                            yield attr, [dict(item) for item in value]
                     else:
                         yield attr, value
                 else:
