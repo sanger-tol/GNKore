@@ -89,11 +89,11 @@ class Bioproject:
             try:
                 return self.NCBI_parse_xml(response.content)
             except ET.ParseError as e:
-                print(f"Error parsing XML: {e}")
+                logger.warning(f"Error parsing XML: {e}")
                 return {}
         else:
             sys.exit(f"NCBI_get_taxonomy_lineage_and_ranks: Failed to fetch data for taxid {self.taxid}, status code: {response.status_code}\n Data = {response.content}")
-            logger.warn(f"NCBI_get_taxonomy_lineage_and_ranks: Failed to fetch data for taxid {self.taxid}, status code: {response.status_code}\n Data = {response.content}")
+            logger.warning(f"NCBI_get_taxonomy_lineage_and_ranks: Failed to fetch data for taxid {self.taxid}, status code: {response.status_code}\n Data = {response.content}")
             return {}
 
 

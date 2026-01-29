@@ -102,7 +102,7 @@ def output_data(to_json, to_stdout, id, data):
 
 
 def run_bioproject(to_json, to_stdout, id, note=None):
-    logger.info(f"Processing Bioproject: {id}\n\tWith note: {note if note else "NA"}")
+    logger.info(f"Processing Bioproject: {id}\n\tWith note: {note if note else 'NA'}")
     bioproject_data = Bioproject(id, note)
     output_data(to_json, to_stdout, id, bioproject_data)
 

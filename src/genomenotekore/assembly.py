@@ -11,17 +11,17 @@ logger = logging.getLogger("gnkore_logger")
 
 class Assembly:
     def __init__(self, taxid, children):
-        self.taxid                              = taxid
-        self.accessions                         = children
+        self.taxid = taxid
+        self.accessions = children
         self.assembly_type, self.assembly_dict, self.raw_data = self.fetch_assembly_data()
 
-        self.assembly_data                      = self.process_assembly_data()
-
+        self.assembly_data = self.process_assembly_data()
+        self.linked_assemblies = [i.hap_set_accession for i in self.assembly_data]
         # HAP_ASM CHROMOSOME BLOCK
-        self.hap_assembly_chr_data              = self.combine_hap_chromosome_tables()
+        self.hap_assembly_chr_data = self.combine_hap_chromosome_tables()
         # self.organised_hap_data                 = self.organise_hap_chromosome_data()
 
-        self.collection                         = self.__iter__()
+        self.collection = self.__iter__()
 
 
     def __iter__(self):
@@ -277,22 +277,25 @@ class Assembly:
 
             # TODO: YEAH WE CAN CONDENSE THIS
             if all_assemblies_same & (len(assembly_type_list) > 0):
-                if assembly_type_list[0] == 'hap_asm':
-                    haplotypes_list.append(Haplotype(current_group[0]))
-                    haplotypes_list.append(Haplotype(current_group[1]))
+                for i in current_group:
+                    haplotypes_list.append(Haplotype(i))
 
-                elif assembly_type_list[0] == 'prim_alt':
-                    haplotypes_list.append(Haplotype(current_group[0]))
-                    haplotypes_list.append(Haplotype(current_group[1]))
+                # if assembly_type_list[0] == 'hap_asm':
+                #     haplotypes_list.append(Haplotype(current_group[0]))
+                #     haplotypes_list.append(Haplotype(current_group[1]))
 
-                elif assembly_type_list[0] == 'multiple_primary':
-                    haplotypes_list.append(Haplotype(current_group[0]))
-                    haplotypes_list.append(Haplotype(current_group[1]))
+                # elif assembly_type_list[0] == 'prim_alt':
+                #     haplotypes_list.append(Haplotype(current_group[0]))
+                #     haplotypes_list.append(Haplotype(current_group[1]))
 
-                else:
-                    logger.info(f"This is an unknown assembly type for group:\n\t{assembly_group}")
-                    haplotypes_list.append(Haplotype(current_group[0]))
-                    haplotypes_list.append(Haplotype(current_group[1]))
+                # elif assembly_type_list[0] == 'multiple_primary':
+                #     haplotypes_list.append(Haplotype(current_group[0]))
+                #     haplotypes_list.append(Haplotype(current_group[1]))
+
+                # else:
+                #     logger.info(f"This is an unknown assembly type for group:\n\t{assembly_group}")
+                #     haplotypes_list.append(Haplotype(current_group[0]))
+                #     haplotypes_list.append(Haplotype(current_group[1]))
 
             else:
                 haplotypes_list.append(Haplotype(current_group[0]))
