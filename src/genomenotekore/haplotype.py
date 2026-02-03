@@ -101,11 +101,11 @@ class Haplotype:
         url_list = []
         fasta_url = ebi_xml.find(".//ASSEMBLY_LINKS")
 
-
-        for group in fasta_url:
-            url_elem = group.find(".//URL")
-            text = (url_elem.text or "").strip() if url_elem is not None else ""
-            url_list.append(text if text else "unknown")
+        if fasta_url:
+            for group in fasta_url:
+                url_elem = group.find(".//URL")
+                text = (url_elem.text or "").strip() if url_elem is not None else ""
+                url_list.append(text if text else "unknown")
 
         return url_list, ebi_xml.find(".//PLATFORM").text
 
