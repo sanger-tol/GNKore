@@ -21,10 +21,12 @@ class Haplotype:
         ebi_assembly_data          = fetch_data(self.hap_set_accession)
         fasta_ftp, self.platforms          = self.parse_ebi_xml(ebi_assembly_data)
         # fasta_ftp should only ever be 2 items, a dat and fasta file
-        data_filegen = (i for i in fasta_ftp if i.endswith("dat.gz") if fasta_ftp)
-        fasta_filegen = (i for i in fasta_ftp if i.endswith("fasta.gz") if fasta_ftp)
-        self.fasta_data_file: str           = next(data_filegen) if data_filegen else ""
-        self.fasta_fasta_file: str          = next(fasta_filegen) if fasta_filegen else ""
+        data_files = [i for i in fasta_ftp if i.endswith("dat.gz")]
+        fasta_files = [i for i in fasta_ftp if i.endswith("fasta.gz")]
+
+
+        self.fasta_data_file: str = data_files[0] if data_files else ""
+        self.fasta_fasta_file: str = fasta_files[0] if fasta_files else ""
 
         ### NCBI DATASET API CHUNK
         ncbi_assembly_data         = self.NCBI_fetch_primary_assembly_info()
